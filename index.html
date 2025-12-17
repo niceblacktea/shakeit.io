@@ -734,7 +734,7 @@ function startDraw(){
 
 
 /* ========================================= */
-/* ===== Google Sheet 自動同步函數 (XHR 版本) ===== */
+/* ===== Google Sheet 自動同步函數 (IFRAME 提交版本) ===== */
 /* ========================================= */
 
 // 輔助函數：將 ID 轉換為 Google Sheet 格式 (保持不變)
@@ -749,48 +749,61 @@ function mapWinnerDataForSync(winnerArray) {
     });
 }
 
-// 核心同步邏輯：切換到 XMLHttpRequest (XHR)
+// 核心同步邏輯：使用隱藏表單和 IFRAME 提交
 function autoSyncWinner(newWinnersData) {
     if (!GSheetUrl || newWinnersData.length === 0) {
         return; 
     }
     
     const exportData = mapWinnerDataForSync(newWinnersData);
-    const postData = { winners: exportData };
     
-    // 使用 XMLHttpRequest (XHR) 替代 fetch
-    const xhr = new XMLHttpRequest();
+    // 1. 建立一個隱藏的 IFRAME 來接收 Apps Script 的回傳訊息
+    let iframe = document.getElementById('sync-iframe');
+    if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = 'sync-iframe';
+        iframe.name = 'sync-iframe';
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+    }
+
+    // 2. 建立一個隱藏的表單
+    const form = document.createElement('form');
+    form.action = GSheetUrl;
+    form.method = 'POST';
+    form.target = 'sync-iframe'; // 確保提交到隱藏的 IFRAME
+    form.style.display = 'none';
     
-    xhr.open('POST', GSheetUrl, true); // true 表示非同步請求
-    
-    // Apps Script 要求 Content-Type 必須是 JSON
-    xhr.setRequestHeader('Content-Type', 'application/json');
-    
-    // 定義載入完成時的處理
-    xhr.onload = function () {
-        if (xhr.status === 200) {
-            try {
-                const response = JSON.parse(xhr.responseText);
-                if (response.success) {
-                    console.log(`[同步成功 - XHR] 成功同步 ${exportData.length} 筆資料到 Google Sheet。`, response.message);
-                } else {
-                    console.error('[同步失敗 - XHR] Apps Script 執行失敗：', response.message);
-                }
-            } catch (e) {
-                console.error('[同步失敗 - XHR] 回應格式錯誤或 Apps Script 錯誤：', xhr.responseText);
+    // 3. 創建 JSON 數據的 input 字段
+    const dataInput = document.createElement('input');
+    dataInput.type = 'hidden';
+    dataInput.name = 'json_data'; // 這個名稱在 Apps Script 中不會被用到，但必須存在
+    dataInput.value = JSON.stringify({ winners: exportData });
+
+    form.appendChild(dataInput);
+    document.body.appendChild(form);
+
+    // 4. 監聽 Apps Script 回傳的訊息 (透過 postMessage)
+    window.addEventListener('message', function(event) {
+        // 確保訊息來自 Apps Script
+        if (event.origin !== "https://script.google.com") return; 
+
+        // 檢查數據是否為我們預期的 JSON
+        if (typeof event.data === 'object' && event.data.success !== undefined) {
+            if (event.data.success) {
+                console.log(`[同步成功 - IFRAME] 成功同步 ${exportData.length} 筆資料到 Google Sheet。`);
+            } else {
+                console.error('[同步失敗 - IFRAME] Apps Script 執行失敗：', event.data.message);
             }
-        } else {
-            console.error(`[同步失敗 - XHR] 伺服器回應狀態碼錯誤：${xhr.status} ${xhr.statusText}`);
         }
-    };
-    
-    // 定義網路錯誤時的處理
-    xhr.onerror = function () {
-        console.error('[同步失敗 - XHR] 網路或 CORS 預檢錯誤。');
-    };
-    
-    // 發送資料
-    xhr.send(JSON.stringify(postData));
+        
+        // 清理元素
+        form.remove();
+        iframe.remove();
+    }, { once: true }); // 只監聽一次
+
+    // 5. 提交表單，觸發 Apps Script 寫入
+    form.submit();
 }
 
 /* ===== 匯出與複製名單 (不變) ===== */
@@ -837,5 +850,6 @@ function copyWinnersToClipboard() {
 </body>
 
 </html>
+
 
 
