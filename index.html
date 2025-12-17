@@ -734,10 +734,10 @@ function startDraw(){
 
 
 /* ========================================= */
-/* ===== Google Sheet 自動同步函數 (核心) ===== */
+/* ===== Google Sheet 自動同步函數 (XHR 版本) ===== */
 /* ========================================= */
 
-// 輔助函數：將 ID 轉換為 Google Sheet 格式
+// 輔助函數：將 ID 轉換為 Google Sheet 格式 (保持不變)
 function mapWinnerDataForSync(winnerArray) {
     return winnerArray.map(w => {
         const prize = prizes.find(p => p.id === w.prizeId);
@@ -749,39 +749,49 @@ function mapWinnerDataForSync(winnerArray) {
     });
 }
 
-// 核心同步邏輯：只同步新增的資料
-async function autoSyncWinner(newWinnersData) {
+// 核心同步邏輯：切換到 XMLHttpRequest (XHR)
+function autoSyncWinner(newWinnersData) {
     if (!GSheetUrl || newWinnersData.length === 0) {
         return; 
     }
     
     const exportData = mapWinnerDataForSync(newWinnersData);
+    const postData = { winners: exportData };
     
-    try {
-        // 發送 POST 請求到 Apps Script Web App
-        const response = await fetch(GSheetUrl, {
-            method: 'POST',
-            mode: 'cors', 
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            // 發送本次新產生的中獎者資料
-            body: JSON.stringify({ winners: exportData }),
-        });
-
-        if (response.ok) {
-            console.log(`[同步成功] 成功同步 ${exportData.length} 筆資料到 Google Sheet。`);
+    // 使用 XMLHttpRequest (XHR) 替代 fetch
+    const xhr = new XMLHttpRequest();
+    
+    xhr.open('POST', GSheetUrl, true); // true 表示非同步請求
+    
+    // Apps Script 要求 Content-Type 必須是 JSON
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    
+    // 定義載入完成時的處理
+    xhr.onload = function () {
+        if (xhr.status === 200) {
+            try {
+                const response = JSON.parse(xhr.responseText);
+                if (response.success) {
+                    console.log(`[同步成功 - XHR] 成功同步 ${exportData.length} 筆資料到 Google Sheet。`, response.message);
+                } else {
+                    console.error('[同步失敗 - XHR] Apps Script 執行失敗：', response.message);
+                }
+            } catch (e) {
+                console.error('[同步失敗 - XHR] 回應格式錯誤或 Apps Script 錯誤：', xhr.responseText);
+            }
         } else {
-            const errorText = await response.text();
-            console.error('[同步失敗] Apps Script 回應錯誤：', errorText);
-            // 部署在 GitHub Pages 上通常不需要擔心 CORS，這裡的錯誤多半是 Apps Script 執行邏輯問題
+            console.error(`[同步失敗 - XHR] 伺服器回應狀態碼錯誤：${xhr.status} ${xhr.statusText}`);
         }
-    } catch (error) {
-        console.error('[同步失敗] 網路請求錯誤：', error);
-        // 這可能是網路連線問題或 Apps Script 網址失效
-    }
+    };
+    
+    // 定義網路錯誤時的處理
+    xhr.onerror = function () {
+        console.error('[同步失敗 - XHR] 網路或 CORS 預檢錯誤。');
+    };
+    
+    // 發送資料
+    xhr.send(JSON.stringify(postData));
 }
-
 
 /* ===== 匯出與複製名單 (不變) ===== */
 
@@ -827,4 +837,5 @@ function copyWinnersToClipboard() {
 </body>
 
 </html>
+
 
