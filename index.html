@@ -437,11 +437,14 @@ let prizeColorMap = {};
 let colorIndex = 0;
 const DRAW_GIF_URL = "https://i.meee.com.tw/dWSLTDK.gif";
 
-// 硬編碼 Apps Script 網址
-const GSheetUrl = "https://script.google.com/macros/s/AKfycbzkIWjGbptD-VAk1wztbJthv8TJ5hlEkxdW7hZJBDM0DEqYQ8myhhNqrEZuuUAP2TKeTQ/exec";
-let lastSyncIndex = 0; // 追蹤上次同步到哪一個中獎者
+// **【重要設定】**：您的 Apps Script Web App 部署網址
+const GSheetUrl = "https://script.google.com/macros/s/AKfycbzCU-L9iMa4AjFzPQPcAxJVhgaCvWbp0DeFfRxyCN9RnGryHZXfLkr52OO9RTPs-3rp-w/exec";
 
-/* ===== 工具 (略) ===== */
+
+/* ==================================== */
+/* ===== 核心工具與 UI 渲染 (精簡) ===== */
+/* ==================================== */
+
 function shuffle(arr){
   for(let i=arr.length-1;i>0;i--){
     const j=Math.floor(Math.random()*(i+1));
@@ -461,7 +464,6 @@ function getPrizeColor(prizeId) {
     return prizeColorMap[prizeId];
 }
 
-/* ===== UI 渲染與邏輯 (略) ===== */
 function render(){
     renderPrizes();
     renderWinners();
@@ -491,7 +493,6 @@ function renderPrizes() {
     } else {
         sortedPrizes.forEach(p => {
             const isDone = p.remain <= 0;
-            
             if(!isDone && !firstAvailablePrizeId) {
                 firstAvailablePrizeId = p.id;
             }
@@ -500,7 +501,6 @@ function renderPrizes() {
             d.className=`prize-item ${isDone ? 'done' : ''}`;
             d.dataset.id=p.id;
             d.onclick=isDone ? null : ()=>selectPrize(p.id);
-            
             d.innerHTML = `
                 <div class="prize-info">
                     <span>${p.name}</span>
@@ -534,9 +534,9 @@ function renderWinners() {
     const selectedPrizeId = filterSelect.value;
     winnerList.innerHTML = "";
 
+    // 篩選器更新邏輯 (不變)
     const uniquePrizeIds = [...new Set(winners.map(w => w.prizeId))];
     const existingOptions = Array.from(filterSelect.options).map(opt => opt.value);
-    
     uniquePrizeIds.forEach(id => {
         if (!existingOptions.includes(id)) {
             const prize = prizes.find(p => p.id === id);
@@ -573,7 +573,6 @@ function renderWinners() {
     });
 }
 
-
 function selectPrize(id, updateRunner = true){
     document.querySelectorAll('.prize-item').forEach(item => {
         item.classList.remove('selected');
@@ -600,7 +599,8 @@ function toggleSidebar() {
 }
 
 
-/* ===== 匯入、臨時加獎邏輯 (略) ===== */
+/* ===== 匯入、臨時加獎邏輯 (不變) ===== */
+
 document.getElementById("participantFile").addEventListener("change",e=>{
   const file=e.target.files[0];
   if(!file)return;
@@ -667,9 +667,9 @@ function addTempPrize(){
 }
 
 
-/* ==================================== */
-/* ===== 抽獎核心邏輯 (新增自動同步) ===== */
-/* ==================================== */
+/* ======================================= */
+/* ===== 抽獎核心邏輯 (包含自動同步觸發) ===== */
+/* ======================================= */
 function startDraw(){
   const prizeId = document.getElementById("prizeSelect").value;
   const prize=prizes.find(p=>p.id===prizeId);
@@ -726,11 +726,16 @@ function startDraw(){
     render(); // 重新渲染 UI
 
     // 4. *** 自動同步到 Google Sheet ***
+    // (自動觸發，無需使用者點擊)
     autoSyncWinner(newWinnersData); 
 
   }, 400); 
 }
 
+
+/* ========================================= */
+/* ===== Google Sheet 自動同步函數 (核心) ===== */
+/* ========================================= */
 
 // 輔助函數：將 ID 轉換為 Google Sheet 格式
 function mapWinnerDataForSync(winnerArray) {
@@ -739,7 +744,7 @@ function mapWinnerDataForSync(winnerArray) {
         return {
             '中獎人姓名': w.name,
             '獎項名稱': prize ? prize.name : '未知獎項',
-            '時間戳': new Date(w.timestamp).toLocaleString()
+            '時間戳': new Date(w.timestamp).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })
         };
     });
 }
@@ -747,14 +752,13 @@ function mapWinnerDataForSync(winnerArray) {
 // 核心同步邏輯：只同步新增的資料
 async function autoSyncWinner(newWinnersData) {
     if (!GSheetUrl || newWinnersData.length === 0) {
-        // 如果網址不存在或沒有新資料，則不執行同步
         return; 
     }
     
     const exportData = mapWinnerDataForSync(newWinnersData);
     
     try {
-        // 發送 POST 請求
+        // 發送 POST 請求到 Apps Script Web App
         const response = await fetch(GSheetUrl, {
             method: 'POST',
             mode: 'cors', 
@@ -766,30 +770,28 @@ async function autoSyncWinner(newWinnersData) {
         });
 
         if (response.ok) {
-            console.log(`成功同步 ${exportData.length} 筆資料到 Google Sheet。`);
+            console.log(`[同步成功] 成功同步 ${exportData.length} 筆資料到 Google Sheet。`);
         } else {
             const errorText = await response.text();
-            console.error('自動同步失敗！請檢查 Apps Script 設定。', errorText);
-            // 由於是自動同步，不彈出煩人的 alert
+            console.error('[同步失敗] Apps Script 回應錯誤：', errorText);
+            // 部署在 GitHub Pages 上通常不需要擔心 CORS，這裡的錯誤多半是 Apps Script 執行邏輯問題
         }
     } catch (error) {
-        console.error('自動同步時發生網路錯誤：', error);
+        console.error('[同步失敗] 網路請求錯誤：', error);
+        // 這可能是網路連線問題或 Apps Script 網址失效
     }
 }
 
 
-/* ==================================== */
-/* ===== 匯出與複製名單 (保持不變) ===== */
-/* ==================================== */
+/* ===== 匯出與複製名單 (不變) ===== */
 
-// 1. 匯出 Excel (XLSX)
 function exportWinnersToExcel() {
     if (winners.length === 0) {
         alert("目前沒有中獎名單可供匯出。");
         return;
     }
     
-    const exportData = mapWinnerDataForSync(winners); // 使用相同的 map 函數
+    const exportData = mapWinnerDataForSync(winners); 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "中獎名單");
@@ -798,7 +800,6 @@ function exportWinnersToExcel() {
     XLSX.writeFile(wb, `Lottery_Winners_${date}.xlsx`);
 }
 
-// 2. 複製資料到剪貼簿
 function copyWinnersToClipboard() {
     if (winners.length === 0) {
         alert("目前沒有中獎名單可供複製。");
@@ -822,8 +823,7 @@ function copyWinnersToClipboard() {
             alert("複製到剪貼簿失敗，請檢查瀏覽器權限或手動複製:\n" + tsvContent);
         });
 }
-
-/* ===== 初始化呼叫 (保持不變) ===== */
 </script>
 </body>
+
 </html>
