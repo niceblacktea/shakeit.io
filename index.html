@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>抽獎系統</title>
 
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,800&display=swap" rel="stylesheet">
+
 <style>
 :root{
   --bg:#f8fafc;
@@ -40,7 +46,7 @@ body{
 .card{
   background:var(--card); 
   border-radius:18px; 
-  padding:20px;
+  padding:15px 20px;
   box-shadow:0 5px 15px rgba(0,0,0,.05); 
   border: 1px solid #e5e7eb; 
 }
@@ -50,32 +56,62 @@ input,select,button{
   font-size:16px;
   border-radius:10px;
   border:1px solid #cbd5e1;
-  transition: border-color 0.2s;
 }
 input:focus, select:focus {
     border-color: var(--main);
     outline: none;
     box-shadow: 0 0 0 1px var(--main);
 }
-button{
-  cursor:pointer;
-  border:none;
-  font-weight:700;
-  transition: background-color 0.2s, opacity 0.2s;
+
+/* ===== 套用文字動畫.txt 的按鈕樣式 ===== */
+.button-draw {
+  /* 背景改為跟主視覺一致的漸層紫 */
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #ffffff;
+  border: none;
+  padding: 12px 40px;
+  border-radius: 50px; /* 圓角改為膠囊型，更現代感 */
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* 增加一點點外發光，讓按鈕跳出來 */
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+  transition: all 0.3s ease;
 }
-.primary{
-  background:var(--main);
-  color:white;
+
+.button-draw:hover {
+  /* 滑鼠移上去時稍微變亮並往上浮一點點 */
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6);
+  filter: brightness(1.1);
 }
-.primary:hover{
-  background:var(--main-dark);
+
+.button-draw:active {
+  transform: translateY(1px);
 }
-.secondary{
-  background:white;
-  color:var(--text-primary);
+
+.button-draw:disabled {
+  background: #cbd5e1;
+  box-shadow: none;
+  cursor: not-allowed;
 }
-.secondary:hover{
-  background:var(--prize-done);
+  
+.center {
+  display: flex;
+  justify-content: center;
+  align-items: center; 
+  margin-top: 5px; 
+  gap: 20px;
+}
+
+.side-gif {
+    height: 75px; 
+    width: auto;
+}
+
+.flip-x {
+    transform: scaleX(-1);
 }
 
 .row{
@@ -83,14 +119,15 @@ button{
   gap:12px;
   flex-wrap:wrap;
 }
+
 .runner{
-  margin:10px 0 15px 0; 
-  height:120px; 
+  margin: 5px 0 5px 0; 
+  height: 90px;
   display:flex;
   flex-direction: column; 
   align-items:center;
   justify-content:center;
-  font-size:30px; 
+  font-size:28px; 
   font-weight:900;
   color:var(--main);
   background:linear-gradient(180deg,#eef2ff,#fff);
@@ -99,23 +136,14 @@ button{
   flex-shrink: 0; 
 }
 .runner .current-prize {
-    font-size: 16px; 
-    font-weight: 500;
-    color: var(--text-secondary);
-    margin-bottom: 5px; 
+    font-size: 22px; 
+    font-weight: 600;
+    color: #D55C57;
+    margin-bottom: 2px;
 }
 .runner .winner-name-result {
-    font-size: 40px; 
+    font-size: 36px; 
     font-weight: 900;
-}
-.runner .gif-waiting {
-    height: 80px; 
-    margin-bottom: 5px; 
-    opacity: 0.5; 
-    transition: opacity 0.2s;
-}
-.runner .gif-active {
-    opacity: 1;
 }
 
 .stats{
@@ -129,9 +157,9 @@ button{
   flex-shrink: 0; 
 }
 
-/* --- 側邊欄樣式 (未變動) --- */
 .sidebar {
-  position: fixed; top: 0; left: -320px; width: 300px; height: 100%;
+  position: fixed;
+  top: 0; left: -320px; width: 300px; height: 100%;
   background-color: var(--card); box-shadow: 4px 0 10px rgba(0,0,0,0.1);
   transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 1000; overflow-y: auto;
 }
@@ -139,61 +167,62 @@ button{
 .sidebar-content { padding: 20px; }
 .sidebar-content label { font-size: 14px; font-weight: 500; }
 .sidebar-content input[type="file"] {
-    font-size: 14px; padding: 8px 10px; box-sizing: border-box; width: 100%; 
+    font-size: 14px; padding: 8px 10px; box-sizing: border-box;
+    width: 100%; 
 }
 .sidebar-header {
     display: flex; justify-content: space-between; align-items: center;
-    padding: 10px 0; margin-bottom: 20px; border-bottom: 1px solid #e5e7eb;
+    padding: 10px 0; margin-bottom: 20px;
+    border-bottom: 1px solid #e5e7eb;
 }
 .sidebar-header h2 { margin: 0; font-size: 20px; font-weight: 700; color: var(--main); }
 .sidebar-close {
     font-size: 28px; font-weight: 300; cursor: pointer; background: none; border: none;
-    line-height: 1; color: var(--text-secondary); padding: 0; margin-right: 5px;
+    line-height: 1; color: var(--text-secondary);
+    padding: 0; margin-right: 5px;
 }
 .sidebar-toggle {
   position: fixed; top: 15px; left: 15px; z-index: 1001; 
-  background: var(--main); color: white; padding: 10px 15px; border-radius: 8px; 
+  background: var(--main); color: white;
+  padding: 10px 15px; border-radius: 8px; 
   font-size: 24px; line-height: 1; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-  cursor: pointer; opacity: 1; transition: opacity 0.3s, transform 0.3s;
+  cursor: pointer; opacity: 1;
+  transition: opacity 0.3s, transform 0.3s;
 }
 .sidebar.open ~ .sidebar-toggle { 
-    opacity: 0; transform: translateX(-100%); pointer-events: none; 
+    opacity: 0; transform: translateX(-100%); pointer-events: none;
 }
 
-/* --- 佈局 (未變動) --- */
 .two-column-layout {
     display: flex; gap: 20px; flex-grow: 1; min-height: 0;
 }
 .left-column {
-    flex: 1; 
+    flex: 1;
     display: flex;
     flex-direction: column; 
     gap: 10px; 
     min-height: 0; 
 }
 .right-column {
-    flex: 1; min-width: 0; min-height: 0; 
+    flex: 1; min-width: 0; min-height: 0;
     display: flex; 
     flex-direction: column;
 }
 
-/* 確保獎項選擇卡片本身能夠使用剩餘的空間 */
 .prize-selection-card {
     flex-grow: 1; 
     display: flex;
     flex-direction: column;
-    min-height: 0; 
+    min-height: 0;
 }
 
-
-/* --- 獎項選擇區塊 (未變動) --- */
 .prize-list {
     flex-grow: 1; 
     min-height: 0; 
     overflow-y: auto; 
     border: 1px solid #e5e7eb; 
     border-radius: 10px; 
-    padding: 5px 0; 
+    padding: 5px 0;
     margin-top: 10px; 
     margin-bottom: 0; 
 }
@@ -202,20 +231,20 @@ button{
     margin: 5px 10px; 
     border-radius: 8px;
     cursor: pointer;
-    background-color: var(--card); 
+    background-color: var(--card);
     border: 1px solid var(--prize-border); 
     transition: all 0.2s;
 }
 .prize-item:hover:not(.done) {
     background-color: #eff6ff;
     border-color: #93c5fd; 
-    transform: translateY(-1px); 
+    transform: translateY(-1px);
 }
 .prize-item.selected {
     background-color: var(--main);
     color: white;
     font-weight: 700;
-    border-color: var(--main); 
+    border-color: var(--main);
     box-shadow: 0 4px 8px rgba(99, 102, 241, 0.4); 
 }
 .prize-item.done {
@@ -236,7 +265,7 @@ button{
     font-weight: 600;
 }
 .prize-item .prize-info span:last-child {
-    font-size: 18px; 
+    font-size: 18px;
     font-weight: 900;
     color: var(--main-dark);
 }
@@ -249,14 +278,13 @@ button{
     color: white; 
 }
 
-/* 臨時加獎區塊 (未變動) */
 .temp-box {
     border-top:1px dashed #e5e7eb;
-    padding-top:16px;
-    margin-top:20px;
+    padding-top:10px;
+    margin-top:10px;
     flex-shrink: 0; 
 }
-.temp-box h4 { margin: 0 0 10px 0; font-size: 16px; }
+.temp-box h4 { margin: 0 0 5px 0; font-size: 15px; }
 .temp-box .row input { padding: 8px; font-size: 14px; }
 .temp-add-btn {
     background: var(--accent);
@@ -272,7 +300,6 @@ button{
     background: #e59e0b;
 }
 
-/* --- 中獎名單區塊 (調整匯出按鈕樣式，移除同步按鈕) --- */
 .winner-list-container {
     flex-grow: 1; 
     display: flex;
@@ -321,7 +348,7 @@ button{
 .winner-item {
     padding:10px 12px; 
     font-weight: 500;
-    border-radius: 5px; 
+    border-radius: 5px;
     margin: 4px 10px; 
     display: flex;
     justify-content: space-between;
@@ -330,12 +357,12 @@ button{
     transition: background-color 0.2s;
 }
 .winner-item .winner-name {
-    font-size: 14px; 
-    font-weight: 700;
+    font-size: 18px; 
+    font-weight: 600;
     color: var(--text-primary);
 }
 .winner-item .prize-tag {
-    font-size: 14px; 
+    font-size: 15px;
     padding: 2px 8px;
     border-radius: 4px;
     color: var(--text-secondary);
@@ -379,16 +406,30 @@ button{
         <div class="card">
           <div class="runner" id="runner">
               <div class="current-prize" id="currentPrizeInfo">請選擇獎項</div>
-              <img id="drawGif" src="https://i.meee.com.tw/dWSLTDK.gif" class="gif-waiting" alt="抽獎動畫">
           </div>
           <div class="center">
-            <button class="primary" onclick="startDraw()">開始抽獎</button>
+            <img id="leftGif" src="https://i.meee.com.tw/0fBYzFD.gif" class="side-gif" alt="抽獎動畫">
+            
+            <button class="button-draw" id="drawBtn" onclick="startDraw()">
+    <span style="
+        font-family: 'Playfair Display', serif;
+        font-size: 34px;
+        font-weight: 800;
+        font-style: italic;
+        letter-spacing: 2px; /* 增加字距讓草寫感更優雅 */
+        color: #ffffff;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.1); /* 極輕微影子增加立體感 */
+    ">START</span>
+</button>
+            
+            <img id="rightGif" src="https://i.meee.com.tw/0fBYzFD.gif" class="side-gif flip-x" alt="抽獎動畫">
           </div>
         </div>
         
         <div class="card prize-selection-card"> 
             <h3>選擇獎項</h3>
             <input type="hidden" id="prizeSelect" value=""> 
+  
             <div class="prize-list" id="prizeList">
                 <div>請匯入獎項名單...</div>
             </div>
@@ -413,14 +454,14 @@ button{
                   <button onclick="copyWinnersToClipboard()">複製名單</button>
                   <button onclick="exportWinnersToExcel()">匯出 Excel</button>
                   <select id="prizeFilter" onchange="renderWinners()">
-                      <option value="all">所有獎項</option>
+                    <option value="all">所有獎項</option>
                       </select>
               </div>
             </div>
 
             <div class="winner-list-scroll">
                 <div id="winnerList">
-                    </div>
+                   </div>
             </div>
         </div>
     </div>
@@ -435,15 +476,8 @@ let prizes = [];
 let winners = []; 
 let prizeColorMap = {}; 
 let colorIndex = 0;
-const DRAW_GIF_URL = "https://i.meee.com.tw/dWSLTDK.gif";
 
-// **【重要設定】**：您的 Apps Script Web App 部署網址
 const GSheetUrl = "https://script.google.com/macros/s/AKfycbzbRT5w5RB6ZyxuZUA8P2Mdl3HP9ucyVJ05M3ZxAaV7axy4TctAp2J5JNyUxuHQxeFfsg/exec";
-
-
-/* ==================================== */
-/* ===== 核心工具與 UI 渲染 (精簡) ===== */
-/* ==================================== */
 
 function shuffle(arr){
   for(let i=arr.length-1;i>0;i--){
@@ -455,7 +489,7 @@ function shuffle(arr){
 
 function getPrizeColor(prizeId) {
     if (!prizeColorMap[prizeId]) {
-        const h = (colorIndex * 137) % 360; 
+        const h = (colorIndex * 137) % 360;
         const c1 = `hsl(${h}, 70%, 90%)`; 
         const c2 = `hsl(${h}, 70%, 40%)`; 
         prizeColorMap[prizeId] = { bg: c1, border: c2 };
@@ -477,7 +511,6 @@ function render(){
 function renderPrizes() {
     const list = document.getElementById("prizeList");
     list.innerHTML = "";
-
     const sortedPrizes = [...prizes].sort((a, b) => {
         const aDone = a.remain <= 0;
         const bDone = b.remain <= 0;
@@ -485,7 +518,6 @@ function renderPrizes() {
         if (!aDone && bDone) return -1; 
         return 0; 
     });
-
     let firstAvailablePrizeId = "";
     
     if (sortedPrizes.length === 0) {
@@ -498,7 +530,7 @@ function renderPrizes() {
             }
             
             const d=document.createElement("div");
-            d.className=`prize-item ${isDone ? 'done' : ''}`;
+            d.className=`prize-item ${isDone ? 'done' : ''} ${p.id === document.getElementById("prizeSelect").value ? 'selected' : ''}`;
             d.dataset.id=p.id;
             d.onclick=isDone ? null : ()=>selectPrize(p.id);
             d.innerHTML = `
@@ -513,7 +545,6 @@ function renderPrizes() {
 
     const currentSelectedId = document.getElementById("prizeSelect").value;
     const currentPrize = prizes.find(p => p.id === currentSelectedId);
-
     if(currentPrize && currentPrize.remain > 0){
         selectPrize(currentSelectedId, false);
     } else if (firstAvailablePrizeId) {
@@ -522,9 +553,8 @@ function renderPrizes() {
         document.getElementById("prizeSelect").value = "";
         document.getElementById("runner").innerHTML = `
             <div class="current-prize" id="currentPrizeInfo">無可抽獎項</div>
-            <img id="drawGif" src="${DRAW_GIF_URL}" class="gif-waiting" alt="抽獎動畫">
         `;
-        document.querySelector('.primary').disabled = true;
+        document.getElementById("drawBtn").disabled = true;
     }
 }
 
@@ -534,7 +564,6 @@ function renderWinners() {
     const selectedPrizeId = filterSelect.value;
     winnerList.innerHTML = "";
 
-    // 篩選器更新邏輯 (不變)
     const uniquePrizeIds = [...new Set(winners.map(w => w.prizeId))];
     const existingOptions = Array.from(filterSelect.options).map(opt => opt.value);
     uniquePrizeIds.forEach(id => {
@@ -548,9 +577,7 @@ function renderWinners() {
             }
         }
     });
-
     const filteredWinners = winners.filter(w => selectedPrizeId === 'all' || w.prizeId === selectedPrizeId);
-
     if (filteredWinners.length === 0) {
          winnerList.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--text-secondary);">尚未產生中獎名單或篩選條件下沒有結果。</div>`;
          return;
@@ -587,19 +614,15 @@ function selectPrize(id, updateRunner = true){
         if (updateRunner) {
             document.getElementById("runner").innerHTML = `
                 <div class="current-prize" id="currentPrizeInfo">目前獎項：${prize.name}（共 ${prize.initialQty} 名）</div>
-                <img id="drawGif" src="${DRAW_GIF_URL}" class="gif-waiting" alt="抽獎動畫">
             `;
         }
-        document.querySelector('.primary').disabled = false;
+        document.getElementById("drawBtn").disabled = false;
     }
 }
 
 function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('open');
 }
-
-
-/* ===== 匯入、臨時加獎邏輯 (不變) ===== */
 
 document.getElementById("participantFile").addEventListener("change",e=>{
   const file=e.target.files[0];
@@ -620,7 +643,6 @@ document.getElementById("participantFile").addEventListener("change",e=>{
   };
   r.readAsBinaryString(file);
 });
-
 document.getElementById("prizeFile").addEventListener("change",e=>{
   const file=e.target.files[0];
   if(!file)return;
@@ -646,7 +668,6 @@ document.getElementById("prizeFile").addEventListener("change",e=>{
   };
   r.readAsBinaryString(file);
 });
-
 function addTempPrize(){
   const n=tempName.value.trim();
   const q=Number(tempQty.value);
@@ -666,17 +687,12 @@ function addTempPrize(){
   render();
 }
 
-
-/* ======================================= */
-/* ===== 抽獎核心邏輯 (包含自動同步觸發) ===== */
-/* ======================================= */
 function startDraw(){
   const prizeId = document.getElementById("prizeSelect").value;
   const prize=prizes.find(p=>p.id===prizeId);
-  
   if(!prize || prize.remain <= 0){
       alert("請選擇一個尚未抽完的獎項！");
-      document.querySelector('.primary').disabled = true;
+      document.getElementById("drawBtn").disabled = true;
       return;
   }
 
@@ -689,22 +705,13 @@ function startDraw(){
   const take=Math.min(prize.remain,pool.length);
   const runner=document.getElementById("runner");
   
-  document.querySelector('.primary').disabled = true;
+  document.getElementById("drawBtn").disabled = true;
   const currentPrizeInfoText = `目前獎項：${prize.name}（共 ${prize.initialQty} 名）`;
 
-  // 1. 設置抽獎動畫狀態
-  runner.innerHTML = `
-      <div class="current-prize" id="currentPrizeInfo">${currentPrizeInfoText}</div>
-      <img id="drawGif" src="${DRAW_GIF_URL}" class="gif-waiting gif-active" alt="抽獎動畫">
-  `;
-
-  // 2. 0.40秒後停止動畫並顯示結果
   setTimeout(() => {
-    // 計算中獎者
     const picked=shuffle(pool).slice(0,take);
-    const newWinnersData = []; // 儲存本次新產生的中獎者
+    const newWinnersData = []; 
 
-    // 儲存中獎結果到 winners 陣列
     picked.forEach(p=>{
       p.won=true;
       prize.remain--;
@@ -714,30 +721,46 @@ function startDraw(){
           timestamp: Date.now()
       };
       winners.push(winnerEntry);
-      newWinnersData.push(winnerEntry); // 將本次中獎者加入新名單
+      newWinnersData.push(winnerEntry);
     });
     
-    // 3. 顯示最終結果
+// 開獎那一刻觸發 Confetti 特效 (左右兩側噴發)
+    var count = 200;
+    var defaults = {
+      origin: { y: 0.7 },
+      spread: 55,
+      ticks: 100,
+      gravity: 1.2,
+      scalar: 1.2
+    };
+
+    // 左邊往右噴
+    confetti({
+      ...defaults,
+      particleCount: count / 2,
+      angle: 60,
+      origin: { x: 0, y: 0.9 }
+    });
+
+    // 右邊往左噴
+    confetti({
+      ...defaults,
+      particleCount: count / 2,
+      angle: 120,
+      origin: { x: 1, y: 0.9 }
+    });
+
     runner.innerHTML = `
         <div class="current-prize" id="currentPrizeInfo">${currentPrizeInfoText}</div>
         <span class="winner-name-result">${picked.map(p=>p.name).join("、")}</span>
     `;
     
-    render(); // 重新渲染 UI
-
-    // 4. *** 自動同步到 Google Sheet ***
-    // (自動觸發，無需使用者點擊)
+    render(); 
     autoSyncWinner(newWinnersData); 
 
-  }, 400); 
+  }, 400);
 }
 
-
-/* ========================================= */
-/* ===== Google Sheet 自動同步函數 (IFRAME 提交版本) ===== */
-/* ========================================= */
-
-// 輔助函數：將 ID 轉換為 Google Sheet 格式 (保持不變)
 function mapWinnerDataForSync(winnerArray) {
     return winnerArray.map(w => {
         const prize = prizes.find(p => p.id === w.prizeId);
@@ -749,15 +772,9 @@ function mapWinnerDataForSync(winnerArray) {
     });
 }
 
-// 核心同步邏輯：使用隱藏表單和 IFRAME 提交
 function autoSyncWinner(newWinnersData) {
-    if (!GSheetUrl || newWinnersData.length === 0) {
-        return; 
-    }
-    
+    if (!GSheetUrl || newWinnersData.length === 0) return; 
     const exportData = mapWinnerDataForSync(newWinnersData);
-    
-    // 1. 建立一個隱藏的 IFRAME 來接收 Apps Script 的回傳訊息
     let iframe = document.getElementById('sync-iframe');
     if (!iframe) {
         iframe = document.createElement('iframe');
@@ -766,59 +783,34 @@ function autoSyncWinner(newWinnersData) {
         iframe.style.display = 'none';
         document.body.appendChild(iframe);
     }
-
-    // 2. 建立一個隱藏的表單
     const form = document.createElement('form');
     form.action = GSheetUrl;
     form.method = 'POST';
-    form.target = 'sync-iframe'; // 確保提交到隱藏的 IFRAME
+    form.target = 'sync-iframe';
     form.style.display = 'none';
-    
-    // 3. 創建 JSON 數據的 input 字段
     const dataInput = document.createElement('input');
     dataInput.type = 'hidden';
-    dataInput.name = 'json_data'; // 這個名稱在 Apps Script 中不會被用到，但必須存在
+    dataInput.name = 'json_data';
     dataInput.value = JSON.stringify({ winners: exportData });
-
     form.appendChild(dataInput);
     document.body.appendChild(form);
-
-    // 4. 監聽 Apps Script 回傳的訊息 (透過 postMessage)
     window.addEventListener('message', function(event) {
-        // 確保訊息來自 Apps Script
         if (event.origin !== "https://script.google.com") return; 
-
-        // 檢查數據是否為我們預期的 JSON
-        if (typeof event.data === 'object' && event.data.success !== undefined) {
-            if (event.data.success) {
-                console.log(`[同步成功 - IFRAME] 成功同步 ${exportData.length} 筆資料到 Google Sheet。`);
-            } else {
-                console.error('[同步失敗 - IFRAME] Apps Script 執行失敗：', event.data.message);
-            }
-        }
-        
-        // 清理元素
         form.remove();
         iframe.remove();
-    }, { once: true }); // 只監聽一次
-
-    // 5. 提交表單，觸發 Apps Script 寫入
+    }, { once: true });
     form.submit();
 }
-
-/* ===== 匯出與複製名單 (不變) ===== */
 
 function exportWinnersToExcel() {
     if (winners.length === 0) {
         alert("目前沒有中獎名單可供匯出。");
         return;
     }
-    
     const exportData = mapWinnerDataForSync(winners); 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "中獎名單");
-    
     const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     XLSX.writeFile(wb, `Lottery_Winners_${date}.xlsx`);
 }
@@ -828,29 +820,15 @@ function copyWinnersToClipboard() {
         alert("目前沒有中獎名單可供複製。");
         return;
     }
-
     const exportData = mapWinnerDataForSync(winners);
-    
-    let tsvContent = "中獎人姓名\t獎項名稱\t時間戳\n"; 
-
+    let tsvContent = "中獎人姓名\t獎項名稱\t時間戳\n";
     exportData.forEach(row => {
         tsvContent += `${row['中獎人姓名']}\t${row['獎項名稱']}\t${row['時間戳']}\n`;
     });
-
     navigator.clipboard.writeText(tsvContent)
-        .then(() => {
-            alert("中獎名單已成功複製到剪貼簿！\n(請直接貼上到 Google Sheets 或 Excel 中)");
-        })
-        .catch(err => {
-            console.error('複製失敗:', err);
-            alert("複製到剪貼簿失敗，請檢查瀏覽器權限或手動複製:\n" + tsvContent);
-        });
+        .then(() => alert("中獎名單已成功複製到剪貼簿！"))
+        .catch(err => console.error('複製失敗:', err));
 }
 </script>
 </body>
-
 </html>
-
-
-
-
