@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>多重宇宙抽獎系統 v31.0 - 雲端同步版</title>
+<title>多重宇宙抽獎系統 v30.1 - 雲端同步版</title>
 
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -11,41 +11,98 @@
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
 <style>
-/* ... (保留原本的 CSS 樣式) ... */
-:root { --y2k-blue: #b9d8ff; --y2k-purple: #e2d1ff; --y2k-dark: rgba(18, 18, 26, 0.95); --px-bg: #fdf2d0; --px-grid: rgba(220, 210, 180, 0.4); --px-win-top: #8cc6d1; --px-card: #ffffff; --px-border: #3d2b2b; }
+:root {
+  --y2k-blue: #b9d8ff;
+  --y2k-purple: #e2d1ff;
+  --y2k-dark: rgba(18, 18, 26, 0.95);
+  --px-bg: #fdf2d0;
+  --px-grid: rgba(220, 210, 180, 0.4);
+  --px-win-top: #8cc6d1;
+  --px-card: #ffffff;
+  --px-border: #3d2b2b;
+}
+
 body { margin: 0; padding: 0; height: 100vh; overflow: hidden; font-family: "Noto Sans TC", sans-serif; }
+
+/* --- 滾輪視覺優化 --- */
 .theme-cyber ::-webkit-scrollbar { width: 6px; }
-.theme-cyber ::-webkit-scrollbar-thumb { background: var(--y2k-blue); border-radius: 10px; }
+.theme-cyber ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); }
+.theme-cyber ::-webkit-scrollbar-thumb { background: var(--y2k-blue); border-radius: 10px; box-shadow: 0 0 10px var(--y2k-blue); }
+
 .theme-pixel ::-webkit-scrollbar { width: 14px; }
-.theme-pixel ::-webkit-scrollbar-thumb { background: #ccc; border: 2px solid var(--px-border); }
-.sidebar { position: fixed; top: 0; left: -340px; width: 320px; height: 100%; transition: 0.4s; z-index: 2200; padding: 25px; box-sizing: border-box; overflow-y: auto; box-shadow: 10px 0 30px rgba(0,0,0,0.2); }
+.theme-pixel ::-webkit-scrollbar-track { background: #e8e8e8; border: none; }
+.theme-pixel ::-webkit-scrollbar-thumb { 
+    background: #ccc; 
+    border: 2px solid var(--px-border);
+    box-shadow: inset -2px -2px 0px #888, inset 2px 2px 0px #fff;
+}
+
+/* --- 側邊欄 --- */
+.sidebar { 
+    position: fixed; top: 0; left: -340px; width: 320px; height: 100%; 
+    transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 2200; 
+    padding: 25px; box-sizing: border-box; overflow-y: auto;
+    box-shadow: 10px 0 30px rgba(0,0,0,0.2);
+}
 .sidebar.open { left: 0; }
-.theme-cyber .sidebar { background: var(--y2k-dark); color: #fff; }
-.theme-pixel .sidebar { background: var(--px-card); border-right: 4px solid var(--px-border); }
-.setting-group { margin-bottom: 25px; }
+.theme-cyber .sidebar { background: var(--y2k-dark); backdrop-filter: blur(10px); border-right: 1px solid rgba(255,255,255,0.1); color: #fff; }
+.theme-pixel .sidebar { background: var(--px-card); border-right: 4px solid var(--px-border); color: var(--px-border); }
+
+.setting-group { margin-bottom: 25px; padding-bottom: 20px; }
+.theme-cyber .setting-group { border-bottom: 1px solid rgba(255,255,255,0.1); }
+.theme-pixel .setting-group { border-bottom: 3px dashed var(--px-border); }
+
 .group-title { display: flex; align-items: center; gap: 6px; font-family: 'Orbitron'; font-size: 13px; font-weight: bold; margin-bottom: 15px; opacity: 0.8; }
-.sidebar input { width: 100%; padding: 10px; margin-bottom: 12px; border-radius: 6px; box-sizing: border-box; }
+.group-title .material-icons { font-size: 18px; }
+
+.sidebar input { width: 100%; padding: 10px; margin-bottom: 12px; border-radius: 6px; box-sizing: border-box; font-size: 14px; transition: 0.3s; }
+.theme-cyber .sidebar input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); color: #fff; }
+.theme-pixel .sidebar input { border: 3px solid var(--px-border); background: #fff; }
 .side-btn { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+
+/* --- 主框架 --- */
 .theme-cyber { background: linear-gradient(135deg, #cbdcf7 0%, #e2d1ff 50%, #b9d8ff 100%); color: #12121a; }
+.theme-cyber::before { content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: linear-gradient(rgba(255, 255, 255, 0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.3) 1px, transparent 1px); background-size: 45px 45px; z-index: 0; }
 .theme-pixel { background-color: var(--px-bg); background-image: linear-gradient(var(--px-grid) 1px, transparent 1px), linear-gradient(90deg, var(--px-grid) 1px, transparent 1px); background-size: 25px 25px; }
-.container { max-width: 1400px; margin: 0 auto; padding: 20px; height: 100vh; display: flex; flex-direction: column; box-sizing: border-box; position: relative; z-index: 10; }
+
+.container { max-width: 1400px; margin: 0 auto; padding: 20px; height: 100vh; display: flex; flex-direction: column; box-sizing: border-box; z-index: 10; position: relative; }
 .main-grid { display: flex; gap: 20px; flex: 1; min-height: 0; }
 .col-left, .col-right { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
 .card { padding: 20px; margin-bottom: 15px; position: relative; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
-.theme-cyber .card { background: var(--y2k-dark); border: 1.5px solid rgba(255, 255, 255, 0.2); border-radius: 12px; color: #fff; }
-.theme-pixel .card { background: var(--px-card); border: 4px solid var(--px-border); padding-top: 50px; }
-.theme-pixel .card::after { content: "■ " attr(data-title); position: absolute; top: 0; left: 0; width: 100%; height: 40px; background: var(--px-win-top); border-bottom: 4px solid var(--px-border); color: #fff; font-size: 24px; line-height: 40px; padding-left: 15px; }
-.list-container { flex: 1; overflow-y: auto; }
-.display-content { width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; text-align: center; }
-.draw-btn { font-family: 'Orbitron'; font-weight: 700; font-size: 36px; cursor: pointer; padding: 10px 65px; border-radius: 50px; border: none; }
-.theme-pixel .draw-btn { border-radius: 0; border: 4px solid var(--px-border); box-shadow: 0 8px 0 var(--px-border); }
-.winner-item { display: flex; padding: 12px 18px; margin-bottom: 12px; border-radius: 8px; }
-.winner-name-box { flex: 0 0 39%; font-size: 24px; font-weight: 700; }
-.prize-tag { padding: 6px 14px; border-radius: 4px; display: inline-block; }
-.menu-toggle { position: fixed; top: 15px; left: 15px; z-index: 2100; cursor: pointer; width: 42px; height: 42px; background: rgba(0,0,0,0.8); color: #fff; display: flex; align-items: center; justify-content: center; border-radius: 10px; }
+.theme-cyber .card { background: var(--y2k-dark); border: 1.5px solid rgba(255, 255, 255, 0.2); border-radius: 12px; color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+.theme-cyber .card-title { font-family: 'Orbitron'; font-weight: bold; margin-bottom: 15px; border-left: 4px solid var(--y2k-blue); padding-left: 10px; display: flex; align-items: center; gap: 8px; }
+
+.theme-pixel .card { background: var(--px-card); border: 4px solid var(--px-border); box-shadow: 8px 8px 0px rgba(0,0,0,0.1); padding-top: 50px; }
+.theme-pixel .card::after { content: "■ " attr(data-title); position: absolute; top: 0; left: 0; width: 100%; height: 40px; background: var(--px-win-top); border-bottom: 4px solid var(--px-border); color: #fff; font-family: 'VT323'; font-size: 24px; line-height: 40px; padding-left: 15px; box-sizing: border-box; }
+.theme-pixel .card-title { display: none; }
+
+.list-container { flex: 1; overflow-y: auto; padding-right: 10px; }
+.display-content { width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; text-align: center; position: relative; }
+
+/* --- START 按鈕 --- */
+.draw-btn { font-family: 'Orbitron'; font-weight: 700; font-size: 36px; cursor: pointer; padding: 10px 65px; border: none; transition: transform 0.05s, box-shadow 0.05s; border-radius: 50px; outline: none; }
+.theme-cyber .draw-btn { background: linear-gradient(90deg, #00d4ff, #cc99ff); color: #12121a; box-shadow: 0 0 20px rgba(0, 212, 255, 0.4); }
+.theme-cyber .draw-btn:active { transform: scale(0.95); box-shadow: 0 0 40px rgba(204, 153, 255, 0.8); }
+.theme-pixel .draw-btn { font-family: 'VT323'; font-size: 44px; background: #ff4757; color: #fff; border: 4px solid var(--px-border); box-shadow: 0 8px 0 var(--px-border); border-radius: 0px; position: relative; top: -8px; margin-bottom: 8px; }
+.theme-pixel .draw-btn:active { top: 0px; box-shadow: 0 0px 0 var(--px-border); }
+
+/* Winner Wall */
+.winner-item { display: flex; align-items: flex-start; padding: 12px 18px; margin-bottom: 12px; gap: 15px; border-radius: 8px; justify-content: flex-start; }
+.winner-name-box { flex: 0 0 39%; max-width: 39%; font-size: 24px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; padding-top: 4px; }
+.winner-prize-box { flex: 1; text-align: left; display: flex; flex-wrap: wrap; }
+.prize-tag { padding: 6px 14px; border-radius: 4px; display: inline-block; word-break: break-all; white-space: normal; line-height: 1.3; }
+.prize-no-span { font-family: 'VT323', monospace; font-size: 26px; } 
+.prize-name-span { font-family: "Noto Sans TC", sans-serif; font-size: 20px; font-weight: 700; } 
+
+.menu-toggle { position: fixed; top: 15px; left: 15px; z-index: 2100; cursor: pointer; width: 42px; height: 42px; background: rgba(0,0,0,0.8); color: #fff; display: flex; align-items: center; justify-content: center; border-radius: 10px; transition: 0.3s; }
+.menu-toggle .material-icons { font-size: 22px; }
+
 .stats-bar { display: flex; justify-content: flex-end; gap: 25px; margin-bottom: 10px; font-family: 'Orbitron'; font-size: 22px; font-weight: bold; }
+
 .fixed-prize-info { position: absolute; top: 10px; width: 100%; display: flex; justify-content: center; z-index: 10; }
 .info-capsule { display: flex; align-items: center; gap: 15px; padding: 4px 20px; }
+.info-divider { width: 1px; height: 16px; background: currentColor; opacity: 0.5; }
 </style>
 </head>
 
@@ -53,22 +110,38 @@ body { margin: 0; padding: 0; height: 100vh; overflow: hidden; font-family: "Not
 
 <div class="sidebar" id="sidebar">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
-        <div style="font-family:'Orbitron'; font-size:22px; font-weight:bold;">MENU</div>
-        <span class="material-icons" style="cursor: pointer;" onclick="toggleSidebar()">close</span>
+        <div style="font-family:'Orbitron'; font-size:22px; font-weight:bold; letter-spacing: 2px;">MENU</div>
+        <span class="material-icons" style="cursor: pointer; font-size: 24px;" onclick="toggleSidebar()">close</span>
+    </div>
+
+    <div class="setting-group">
+        <div class="group-title"><span class="material-icons">palette</span>THEME SELECT</div>
+        <div style="display:flex; gap:10px;">
+            <button onclick="changeTheme('theme-cyber')" class="side-btn" style="background:var(--y2k-blue); color: #12121a;">Y2K</button>
+            <button onclick="changeTheme('theme-pixel')" class="side-btn" style="background:#fff; border:2px solid #333; color: #333;">PIXEL</button>
+        </div>
     </div>
 
     <div class="setting-group">
         <div class="group-title"><span class="material-icons">file_upload</span>DATA IMPORT</div>
-        <input type="file" id="participantFile" accept=".xlsx,.xls">
-        <input type="file" id="prizeFile" accept=".xlsx,.xls">
+        <label style="display:block; margin-bottom:10px;">
+            <div style="font-size:11px; margin-bottom:5px; opacity:0.7;">PARTICIPANTS (.xlsx)</div>
+            <input type="file" id="participantFile" accept=".xlsx,.xls">
+        </label>
+        <label>
+            <div style="font-size:11px; margin-bottom:5px; opacity:0.7;">PRIZE LIST (A:捐贈者 B:獎項 C:數量)</div>
+            <input type="file" id="prizeFile" accept=".xlsx,.xls">
+        </label>
     </div>
 
     <div class="setting-group">
         <div class="group-title"><span class="material-icons">add_circle_outline</span>QUICK ADD</div>
-        <input type="text" id="quickDonorName" placeholder="Donor (捐贈者)">
-        <input type="text" id="quickPrizeName" placeholder="Prize Name (獎項)">
-        <input type="number" id="quickPrizeQty" value="1">
-        <button onclick="quickAddPrize()" class="side-btn" style="background:#34d399; color:#fff;">ADD</button>
+        <input type="text" id="quickDonorName" placeholder="Donor Name">
+        <input type="text" id="quickPrizeName" placeholder="Prize Name">
+        <input type="number" id="quickPrizeQty" value="1" min="1">
+        <button onclick="quickAddPrize()" class="side-btn" style="background:#34d399; color:#fff;">
+            <span class="material-icons" style="font-size:18px;">add</span>ADD
+        </button>
     </div>
 </div>
 
@@ -83,6 +156,7 @@ body { margin: 0; padding: 0; height: 100vh; overflow: hidden; font-family: "Not
     <div class="main-grid">
         <div class="col-left">
             <div class="card" data-title="NOW_PLAYING" style="height: 320px;">
+                <div class="card-title"><span class="material-icons">play_circle</span>NOW PLAYING</div>
                 <div id="currentPrizeInfo" class="display-content">
                     <div style="font-family:'Orbitron'; font-size:32px; opacity:0.3;">[ STANDBY ]</div>
                 </div>
@@ -91,12 +165,14 @@ body { margin: 0; padding: 0; height: 100vh; overflow: hidden; font-family: "Not
                 </div>
             </div>
             <div class="card" data-title="SELECT_PRIZE" style="flex: 1;">
+                <div class="card-title"><span class="material-icons">ads_click</span>SELECT PRIZE</div>
                 <input type="hidden" id="prizeSelect" value="">
                 <div class="list-container" id="prizeList"></div>
             </div>
         </div>
         <div class="col-right">
             <div class="card" data-title="WINNER_WALL" style="flex: 1;">
+                <div class="card-title"><span class="material-icons">emoji_events</span>WINNER WALL</div>
                 <div class="list-container" id="winnerList"></div>
             </div>
         </div>
@@ -104,26 +180,56 @@ body { margin: 0; padding: 0; height: 100vh; overflow: hidden; font-family: "Not
 </div>
 
 <script>
-// --- 重要：請在此處填入您的 Google Apps Script 部署網址 ---
+// --- 雲端同步設定 ---
 const GAS_URL = "https://script.google.com/macros/s/AKfycbz5ulYOXKw9IqBSfC73sGTHD2RCHcgjTShf3aLWizq_fKZefVhbyHTxVk2s5VV4speOkQ/exec";
 
 let participants = []; let prizes = []; let winners = [];
-const y2kColorSchemes = [{ bg: '#FFD5E5', text: '#5E2B3E' }, { bg: '#BFFFE7', text: '#1A4D3B' }, { bg: '#E2D1FF', text: '#3E2B5E' }, { bg: '#B9D8FF', text: '#2B3E5E' }, { bg: '#FFEBBC', text: '#5E492B' }];
+const y2kColorSchemes = [
+    { bg: '#FFD5E5', text: '#5E2B3E', glow: 'rgba(255, 213, 229, 0.6)' }, 
+    { bg: '#BFFFE7', text: '#1A4D3B', glow: 'rgba(191, 255, 231, 0.6)' }, 
+    { bg: '#E2D1FF', text: '#3E2B5E', glow: 'rgba(226, 209, 255, 0.6)' }, 
+    { bg: '#B9D8FF', text: '#2B3E5E', glow: 'rgba(185, 216, 255, 0.6)' }, 
+    { bg: '#FFEBBC', text: '#5E492B', glow: 'rgba(255, 235, 188, 0.6)' }  
+];
 const pixelPalette = ['#f28d7d', '#8cc6d1', '#71aa34', '#fce8a4', '#b19cd9'];
-let prizeColorMap = {};
+const y2kConfetti = ['#00d4ff', '#cc99ff', '#ffffff', '#ff6b6b', '#39ff14'];
+const pixelConfetti = ['#ff4d4d', '#2ec4b6', '#70e000', '#ff9f1c', '#ffff3f'];
+let prizeColorMap = {}; let lastColorIndex = -1;
 
 function toggleSidebar() { document.getElementById("sidebar").classList.toggle("open"); }
 
-// 同步到 Google Sheet 的函數
+// 格式化顯示方式：[捐贈者] 獎項名稱
+function getFormattedPrizeName(donor, prizeName) {
+    return donor ? `[${donor}] ${prizeName}` : prizeName;
+}
+
+// 同步至 Google Sheets 的核心函數
 function syncToGoogleSheet(winObj) {
-    if (!GAS_URL || GAS_URL.includes("您的")) return;
+    if (!GAS_URL) return;
     fetch(GAS_URL, {
         method: "POST",
         mode: "no-cors",
         cache: "no-cache",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(winObj)
-    }).catch(e => console.error("Sync Error:", e));
+    })
+    .then(() => console.log("資料已發送至雲端"))
+    .catch(err => console.error("雲端同步失敗:", err));
+}
+
+function quickAddPrize() {
+    const donorEl = document.getElementById("quickDonorName");
+    const nameEl = document.getElementById("quickPrizeName");
+    const qtyEl = document.getElementById("quickPrizeQty");
+    const donor = donorEl.value.trim();
+    const name = nameEl.value.trim();
+    const qty = parseInt(qtyEl.value);
+    if(!name || isNaN(qty) || qty <= 0) return alert("請輸入正確資訊");
+    const newPrize = { id: 'Q'+Date.now(), displayIndex: prizes.length + 1, name: name, donor: donor, remain: qty, initialQty: qty };
+    prizes.push(newPrize);
+    donorEl.value = ""; nameEl.value = ""; qtyEl.value = "1";
+    if(!document.getElementById("prizeSelect").value) selectPrize(newPrize.id);
+    render();
 }
 
 function selectPrize(id) {
@@ -132,15 +238,37 @@ function selectPrize(id) {
     const p = prizes.find(pz => pz.id === id);
     if(p) {
         const info = document.getElementById("currentPrizeInfo");
+        const isCyber = document.body.classList.contains('theme-cyber');
+        
+        // NOW PLAYING 區塊：捐贈者與獎項名稱皆為 55px
         const donorHtml = p.donor ? `<div style="font-size:55px; opacity:0.85; margin-bottom:5px;">${p.donor}</div>` : '';
         const nameHtml = `<div style="font-size:55px; font-weight:900; line-height:1.1;">${p.name}</div>`;
-        info.innerHTML = `
-            <div class="fixed-prize-info">
-                <div class="info-capsule" style="background: rgba(0,0,0,0.1); border-radius: 50px;">
-                    <span>NO. ${String(p.displayIndex).padStart(2,'0')}</span> | <span>QTY: ${p.initialQty}</span>
+
+        if(isCyber) {
+            info.innerHTML = `
+                <div class="fixed-prize-info">
+                    <div class="info-capsule" style="font-family:'Orbitron'; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); border-radius: 50px; color: var(--y2k-blue);">
+                        <span>NO. ${String(p.displayIndex).padStart(2,'0')}</span>
+                        <div class="info-divider"></div>
+                        <span>QTY: ${p.initialQty}</span>
+                    </div>
                 </div>
-            </div>
-            <div style="margin-top:25px; font-family:'Noto Sans TC';">${donorHtml}${nameHtml}</div>`;
+                <div style="margin-top:25px; font-family:'Orbitron', 'Noto Sans TC'; color:white; text-shadow:0 0 15px var(--y2k-blue);">
+                    ${donorHtml}${nameHtml}
+                </div>`;
+        } else {
+            info.innerHTML = `
+                <div class="fixed-prize-info">
+                    <div class="info-capsule" style="background: #3d2b2b; color: #f1c40f; border: 3px solid #f1c40f; font-family: 'VT323'; font-size: 24px;">
+                        <span>NO. ${String(p.displayIndex).padStart(2,'0')}</span>
+                        <div class="info-divider" style="background: #f1c40f;"></div>
+                        <span>QTY: ${p.initialQty}</span>
+                    </div>
+                </div>
+                <div style="margin-top:40px; font-family:'Orbitron', 'Noto Sans TC'; font-weight:bold; color:var(--px-border); text-shadow: 4px 4px 0px #fdf2d0, -1px -1px 0px #fff;">
+                    ${donorHtml}${nameHtml}
+                </div>`;
+        }
     }
     render(); 
 }
@@ -151,10 +279,12 @@ function startDraw() {
     if(!prize || prize.remain <= 0) return alert("SELECT PRIZE FIRST");
     const pool = participants.filter(p => !p.won);
     if(pool.length === 0) return alert("NO PARTICIPANTS");
-    
+    if (prizeColorMap[pid] === undefined) {
+        let newIdx; do { newIdx = Math.floor(Math.random() * y2kColorSchemes.length); } while (newIdx === lastColorIndex && y2kColorSchemes.length > 1);
+        prizeColorMap[pid] = y2kColorSchemes[newIdx]; lastColorIndex = newIdx;
+    }
     const btn = document.getElementById("drawBtn");
     btn.disabled = true;
-    
     setTimeout(() => {
         const count = Math.min(prize.remain, pool.length);
         for(let i=0; i<count; i++) {
@@ -171,12 +301,13 @@ function startDraw() {
             };
             winners.push(winObj);
             
-            // 執行同步至 Google Sheet
+            // --- 觸發雲端同步 ---
             syncToGoogleSheet(winObj);
         }
-        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-        selectPrize(pid); 
-        btn.disabled = false;
+        const cColors = document.body.classList.contains('theme-cyber') ? y2kConfetti : pixelConfetti;
+        confetti({ particleCount: 100, angle: 60, spread: 55, origin: { x: 0, y: 0.7 }, colors: cColors });
+        confetti({ particleCount: 100, angle: 120, spread: 55, origin: { x: 1, y: 0.7 }, colors: cColors });
+        selectPrize(pid); btn.disabled = false;
     }, 300);
 }
 
@@ -188,12 +319,25 @@ function render() {
     
     const pList = document.getElementById("prizeList");
     pList.innerHTML = "";
-    prizes.forEach(p => {
-        const isCurrent = p.id === document.getElementById("prizeSelect").value;
+    const isCyber = document.body.classList.contains('theme-cyber');
+
+    [...prizes].sort((a, b) => (a.remain > 0 && b.remain === 0) ? -1 : (a.remain === 0 && b.remain > 0) ? 1 : 0).forEach(p => {
         const d = document.createElement("div");
-        d.style.cssText = `padding:12px; display:flex; margin-bottom:8px; cursor:pointer; border:1px solid rgba(255,255,255,0.2); border-radius:6px; background:${isCurrent?'rgba(255,255,255,0.2)':'transparent'}`;
-        d.innerHTML = `<div style="width:50px;">#${p.displayIndex}</div><div style="flex:1;">[${p.donor}] ${p.name}</div><div>${p.remain}</div>`;
-        d.onclick = () => selectPrize(p.id);
+        const isDone = p.remain === 0;
+        const isCurrent = p.id === document.getElementById("prizeSelect").value;
+        d.style.cssText = `padding:15px; display:flex; align-items:center; margin-bottom:10px; cursor:${isDone ? 'default' : 'pointer'}; border-radius:6px; opacity: ${isDone ? '0.4' : '1'}; transition:0.2s;`;
+        if(isCyber) {
+            d.style.border = isCurrent ? "1.5px solid var(--y2k-blue)" : "1px solid rgba(255,255,255,0.1)";
+            d.style.background = isCurrent ? "rgba(185, 216, 255, 0.15)" : "rgba(255,255,255,0.05)";
+            d.style.color = "#fff";
+        } else {
+            d.style.border = "4px solid var(--px-border)";
+            d.style.background = isCurrent ? "#ffeaa7" : "#fff";
+            d.style.color = "var(--px-border)";
+        }
+        const fullDisplay = getFormattedPrizeName(p.donor, p.name);
+        d.innerHTML = `<div style="width:80px; font-family:'VT323'; font-size:24px;">#${String(p.displayIndex).padStart(2,'0')}</div><div style="flex:1; font-weight:bold; font-size:20px;">${fullDisplay} ${isDone ? '✓' : ''}</div><div style="width:40px; text-align:right; font-family:'VT323'; font-size:22px;">${isDone ? 'END' : p.remain}</div>`;
+        if(!isDone) d.onclick = () => selectPrize(p.id);
         pList.appendChild(d);
     });
 
@@ -202,41 +346,50 @@ function render() {
     winners.slice().reverse().forEach(w => {
         const d = document.createElement("div");
         d.className = "winner-item";
-        d.style.borderBottom = "1px solid rgba(255,255,255,0.1)";
-        d.innerHTML = `<div class="winner-name-box">${w.name}</div><div>[${w.prizeDonor}] ${w.prizeName}</div>`;
+        const fullPrizeDisplay = getFormattedPrizeName(w.prizeDonor, w.prizeName);
+        if(isCyber) { 
+            const scheme = prizeColorMap[w.prizeId] || y2kColorSchemes[0];
+            d.style.background = "rgba(255,255,255,0.04)"; d.style.border = "1px solid rgba(255,255,255,0.12)";
+            d.innerHTML = `<div class="winner-name-box" style="color:#fff;">${formatDisplayName(w.name)}</div><div class="winner-prize-box"><div class="prize-tag" style="background: ${scheme.bg}; color: ${scheme.text}; border: 1px solid rgba(255,255,255,0.4); box-shadow: 0 4px 12px ${scheme.glow};"><span class="prize-no-span">#${String(w.prizeNo).padStart(2,'0')}</span>&nbsp;&nbsp;<span class="prize-name-span">${fullPrizeDisplay}</span></div></div>`;
+        } else { 
+            const colorIdx = (w.prizeNo - 1) % pixelPalette.length;
+            const pxColor = pixelPalette[colorIdx];
+            d.style.backgroundColor = hexToRgba(pxColor, 0.25); d.style.border = `3px solid var(--px-border)`; d.style.boxShadow = `4px 4px 0px ${pxColor}`; 
+            d.innerHTML = `<div class="winner-name-box" style="color:var(--px-border); font-size:22px;">${formatDisplayName(w.name)}</div><div class="winner-prize-box"><div class="prize-tag" style="color:var(--px-border);"><span class="prize-no-span" style="font-weight:bold;">#${String(w.prizeNo).padStart(2,'0')}</span>&nbsp;&nbsp;<span class="prize-name-span">${fullPrizeDisplay}</span></div></div>`;
+        }
         wList.appendChild(d);
     });
 }
 
-function quickAddPrize() {
-    const donor = document.getElementById("quickDonorName").value.trim();
-    const name = document.getElementById("quickPrizeName").value.trim();
-    const qty = parseInt(document.getElementById("quickPrizeQty").value);
-    if(!name || isNaN(qty)) return;
-    prizes.push({ id: 'Q'+Date.now(), displayIndex: prizes.length+1, donor, name, remain: qty, initialQty: qty });
-    render();
+function formatDisplayName(fullName) {
+    const match = fullName.match(/^([^〔\(\[\（]+)([〔\(\[\（].*[〕\)\］\）])$/);
+    if (match) return `<span>${match[1]}</span><span style="font-size:0.8em; opacity:0.9; font-weight:800;">${match[2]}</span>`;
+    return `<span>${fullName}</span>`;
 }
+function hexToRgba(hex, alpha) { let r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16); return `rgba(${r}, ${g}, ${b}, ${alpha})`; }
+function changeTheme(theme) { document.body.className = theme; const currentId = document.getElementById("prizeSelect").value; if(currentId) selectPrize(currentId); else render(); }
 
 document.getElementById("participantFile").onchange = e => {
     const reader = new FileReader(); reader.onload = evt => {
-        const wb = XLSX.read(evt.target.result, {type:'binary'});
-        const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1});
-        participants = data.slice(1).filter(r => r[0]).map(r => ({ name: String(r[0]).trim(), won: false }));
-        render();
+        const wb = XLSX.read(evt.target.result, {type:'binary'}); const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1});
+        participants = data.slice(1).filter(r => r[0]).map(r => ({ name: String(r[0]).trim(), won: false })); render();
     }; reader.readAsBinaryString(e.target.files[0]);
 };
 
 document.getElementById("prizeFile").onchange = e => {
     const reader = new FileReader(); reader.onload = evt => {
-        const wb = XLSX.read(evt.target.result, {type:'binary'});
-        const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1});
+        const wb = XLSX.read(evt.target.result, {type:'binary'}); const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1});
         prizes = data.slice(1).filter(r => r[1]).map((r, i) => ({ 
-            id: 'P'+i, displayIndex: (i + 1), donor: String(r[0] || ""), name: String(r[1]), remain: Number(r[2]||1), initialQty: Number(r[2]||1) 
+            id: 'P'+i, 
+            displayIndex: (i + 1), 
+            donor: String(r[0] || "").trim(),
+            name: String(r[1]).trim(), 
+            remain: Number(r[2]||1), 
+            initialQty: Number(r[2]||1) 
         }));
         if(prizes.length > 0) selectPrize(prizes[0].id); render();
     }; reader.readAsBinaryString(e.target.files[0]);
 };
-function changeTheme(theme) { document.body.className = theme; render(); }
 </script>
 </body>
 </html>
