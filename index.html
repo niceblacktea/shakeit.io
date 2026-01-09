@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>多重宇宙抽獎系統 v30.1 - 雲端同步版</title>
+<title>多重宇宙抽獎系統 v30.2 - 順序穩定版</title>
 
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -180,10 +180,13 @@ body { margin: 0; padding: 0; height: 100vh; overflow: hidden; font-family: "Not
 </div>
 
 <script>
-// --- 雲端同步設定 ---
+// --- 雲端同步設定與佇列處理 ---
 const GAS_URL = "https://script.google.com/macros/s/AKfycbz5ulYOXKw9IqBSfC73sGTHD2RCHcgjTShf3aLWizq_fKZefVhbyHTxVk2s5VV4speOkQ/exec";
 
 let participants = []; let prizes = []; let winners = [];
+let syncQueue = [];    // 同步排隊隊列
+let isSyncing = false; // 鎖定狀態，避免併發導致順序交錯
+
 const y2kColorSchemes = [
     { bg: '#FFD5E5', text: '#5E2B3E', glow: 'rgba(255, 213, 229, 0.6)' }, 
     { bg: '#BFFFE7', text: '#1A4D3B', glow: 'rgba(191, 255, 231, 0.6)' }, 
@@ -198,23 +201,48 @@ let prizeColorMap = {}; let lastColorIndex = -1;
 
 function toggleSidebar() { document.getElementById("sidebar").classList.toggle("open"); }
 
-// 格式化顯示方式：[捐贈者] 獎項名稱
+// 格式化顯示方式
 function getFormattedPrizeName(donor, prizeName) {
     return donor ? `[${donor}] ${prizeName}` : prizeName;
 }
 
-// 同步至 Google Sheets 的核心函數
+/**
+ * 核心同步函數：將資料推入排隊佇列
+ */
 function syncToGoogleSheet(winObj) {
     if (!GAS_URL) return;
-    fetch(GAS_URL, {
-        method: "POST",
-        mode: "no-cors",
-        cache: "no-cache",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(winObj)
-    })
-    .then(() => console.log("資料已發送至雲端"))
-    .catch(err => console.error("雲端同步失敗:", err));
+    syncQueue.push(winObj);
+    processSyncQueue();
+}
+
+/**
+ * 佇列處理器：確保一筆寫完才寫下一筆，嚴格遵守順序
+ */
+async function processSyncQueue() {
+    if (isSyncing || syncQueue.length === 0) return;
+    
+    isSyncing = true;
+    const data = syncQueue[0];
+
+    try {
+        // 使用 await 確保發送完成
+        await fetch(GAS_URL, {
+            method: "POST",
+            mode: "no-cors",
+            cache: "no-cache",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
+        });
+        console.log("已成功同步名單:", data.name);
+        syncQueue.shift(); // 移除隊首已完成的資料
+    } catch (err) {
+        console.error("同步失敗，等待重試:", err);
+        // 若出錯則稍候再試
+        await new Promise(r => setTimeout(r, 2000));
+    } finally {
+        isSyncing = false;
+        processSyncQueue(); // 遞迴處理下一筆
+    }
 }
 
 function quickAddPrize() {
@@ -240,7 +268,6 @@ function selectPrize(id) {
         const info = document.getElementById("currentPrizeInfo");
         const isCyber = document.body.classList.contains('theme-cyber');
         
-        // NOW PLAYING 區塊：捐贈者與獎項名稱皆為 55px
         const donorHtml = p.donor ? `<div style="font-size:55px; opacity:0.85; margin-bottom:5px;">${p.donor}</div>` : '';
         const nameHtml = `<div style="font-size:55px; font-weight:900; line-height:1.1;">${p.name}</div>`;
 
@@ -301,7 +328,7 @@ function startDraw() {
             };
             winners.push(winObj);
             
-            // --- 觸發雲端同步 ---
+            // 觸發排隊同步
             syncToGoogleSheet(winObj);
         }
         const cColors = document.body.classList.contains('theme-cyber') ? y2kConfetti : pixelConfetti;
